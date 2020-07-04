@@ -1,80 +1,53 @@
-const Blockchain = require("./blockchain");
+const uuid = require('uuid').v1;
+const express = require('express');
+const bodyParser = require('body-parser');
+const Blockchain = require('./blockchain');
 
-// Create a BLK object
+const app = express();
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+
 const bitcoin = new Blockchain();
+const nodeAddress = uuid().split('-').join('');
 
-// STAGE ONE
-// Create new transactions
-bitcoin.createNewTransaction(120000, "Dan", "Alex");
-bitcoin.createNewTransaction(23000, "Alex", "Bob");
-bitcoin.createNewTransaction(87678, "Bob", "Dan");
-bitcoin.createNewTransaction(678, "Alex", "Dan");
+console.log(nodeAddress);
 
-// createNewBlock, getLastBlock, createNewTransaction, hashBlock, proofOfWork
-let lastBlock = bitcoin.getLastBlock();
-let previousBlockHash = lastBlock.hash;
+app.get('/blockchain', (req, res) => {
+  return res.json({ message: 'Blochchain', coin: bitcoin });
+});
 
-// Calculate nonce
-let nonce = bitcoin.proofOfWork(previousBlockHash, bitcoin.newTransactions);
-console.log(nonce);
+app.post('/transaction', (req, res) => {
+  const { amount, sender, recipient } = req.body;
+  const blockIndex = bitcoin.createNewTransaction(amount, sender, recipient);
+  return res.json({
+    message: 'Transaction Successful',
+    blockIndex: blockIndex,
+  });
+});
 
-// Hash the block
-let hash = bitcoin.hashBlock(previousBlockHash, bitcoin.newTransactions, nonce);
-console.log(hash);
+app.get('/mine', (req, res) => {
+  const lastBlock = bitcoin.getLastBlock();
+  const previousBlockHash = lastBlock.hash;
+  // Calculate nonce
+  const nonce = bitcoin.proofOfWork(previousBlockHash, bitcoin.newTransactions);
 
-// Create new block
-bitcoin.createNewBlock(nonce, previousBlockHash, hash);
+  // Hash the block
+  const hash = bitcoin.hashBlock(
+    previousBlockHash,
+    bitcoin.newTransactions,
+    nonce
+  );
 
-console.log(bitcoin);
+  bitcoin.createNewBlock(nonce, previousBlockHash, hash);
+  return res.json({ message: 'Block mined successfully', coin: bitcoin });
+});
 
-// STAGE TWO
-// Create new transactions
-bitcoin.createNewTransaction(654567, "Alex", "Dan");
-bitcoin.createNewTransaction(23000, "Chris", "Bob");
-bitcoin.createNewTransaction(87678, "Alice", "Rebecca");
+app.get('/', (req, res) => {
+  return res.json({ message: 'Welcome back' });
+});
 
-// createNewBlock, getLastBlock, createNewTransaction, hashBlock, proofOfWork
-lastBlock = bitcoin.getLastBlock();
-previousBlockHash = lastBlock.hash;
+const PORT = process.argv[2];
 
-// Calculate nonce
-nonce = bitcoin.proofOfWork(previousBlockHash, bitcoin.newTransactions);
-
-// Hash the block
-hash = bitcoin.hashBlock(previousBlockHash, bitcoin.newTransactions, nonce);
-
-// Create new block
-bitcoin.createNewBlock(nonce, previousBlockHash, hash);
-
-console.log(bitcoin);
-
-// bitcoin.createNewBlock(235, "0987UIJBVFTYUIJJU87TGH", "87UJY8I8HBFHJ");
-// bitcoin.createNewBlock(235, "0987UIJBVFTYUIOIGHJK87TGH", "87UJY8JHHJHBFHJ");
-// bitcoin.createNewBlock(235, "0987UIJBVFTYUIJUKJU87TGH", "87UJY8HHJ8HBFHJ");
-// bitcoin.createNewTransaction(23000, "Alex", "Bob");
-// bitcoin.createNewTransaction(87678, "Bob", "Dan");
-// bitcoin.createNewTransaction(678, "Alex", "Dan");
-
-// const prev = "0987UIJBVFTYUIJJU87TGH";
-// const blocData = [
-//   {
-//     amount: 97878,
-//     sender: "Alex",
-//     recipient: "Bob",
-//   },
-//   {
-//     amount: 8756,
-//     sender: "Alex",
-//     recipient: "Dan",
-//   },
-//   {
-//     amount: 34545,
-//     sender: "Chris",
-//     recipient: "Bob",
-//   },
-// ];
-
-// console.log(bitcoin.proofOfWork(prev, blocData));
-
-// console.log(bitcoin.hashBlock(prev, blocData, 1234));
-// console.log(bitcoin);
+app.listen(PORT, () => {
+  console.log(`Running on Port: ${PORT}`);
+});
